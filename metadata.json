@@ -1,0 +1,6 @@
+{
+  "name": "Audit-My-Agent",
+  "description": "AI Agent Reliability, Security & Evaluation Platform — Test. Break. Measure. Improve.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

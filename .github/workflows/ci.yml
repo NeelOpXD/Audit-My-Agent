@@ -1,0 +1,68 @@
+name: Audit-My-Agent CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_agent_gate:
+        description: 'Run live Agent PR Quality Gate against AUDIT_API_URL'
+        required: false
+        default: 'false'
+
+jobs:
+  verify:
+    name: Typecheck, Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: TypeScript typecheck
+        run: npm run lint
+
+      - name: Run unit & API integration tests
+        run: npm test
+
+      - name: Build production bundle
+        run: npm run build
+
+  agent-pr-gate:
+    name: Agent Reliability PR Gate
+    needs: verify
+    if: github.event.inputs.run_agent_gate == 'true' || vars.AUDIT_ENABLE_PR_GATE == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Execute Audit-My-Agent PR Quality Gate
+        env:
+          AUDIT_API_URL: ${{ secrets.AUDIT_API_URL }}
+          AUDIT_CI_TOKEN: ${{ secrets.AUDIT_CI_TOKEN }}
+          AUDIT_AGENT_ID: ${{ vars.AUDIT_AGENT_ID }}
+          AUDIT_TRIALS: '2'
+          AUDIT_MIN_SCORE: '80'
+          AUDIT_MIN_PASS_CARET_K: '80'
+          AUDIT_MAX_P95_MS: '5000'
+        run: npm run ci:gate
